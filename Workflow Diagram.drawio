@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net">
   <diagram name="Page-1" id="oG2h6g-Ubab0sUsAHm5C">
-    <mxGraphModel dx="1009" dy="747" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="588" dy="436" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -146,7 +146,7 @@
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="PFbORUWhisSex7Utl9aW-1" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;startSize=30;fontStyle=1;fontColor=#000000;" value="GIAI ĐOẠN 1: PHÂN TÍCH TĨNH" vertex="1">
-          <mxGeometry height="570" width="1020" x="330" y="1630" as="geometry" />
+          <mxGeometry height="570" width="1020" x="270" y="1590" as="geometry" />
         </mxCell>
         <mxCell id="PFbORUWhisSex7Utl9aW-2" parent="PFbORUWhisSex7Utl9aW-1" style="shape=document;whiteSpace=wrap;html=1;boundedLbl=1;fillColor=#ffffff;strokeColor=#000000;fontStyle=1;fontColor=#000000;" value="&lt;span style=&quot;font-weight: normal;&quot;&gt;Tệp APK&lt;/span&gt;" vertex="1">
           <mxGeometry height="60" width="100" x="30" y="60" as="geometry" />
@@ -202,8 +202,8 @@
             <mxPoint x="460" y="180" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="PFbORUWhisSex7Utl9aW-32" parent="PFbORUWhisSex7Utl9aW-1" style="rounded=1;whiteSpace=wrap;html=1;" value="LLM" vertex="1">
-          <mxGeometry height="60" width="120" x="420" y="310" as="geometry" />
+        <mxCell id="PFbORUWhisSex7Utl9aW-32" parent="PFbORUWhisSex7Utl9aW-1" style="rounded=1;whiteSpace=wrap;html=1;" value="Tóm tắt phương thức M&lt;sub&gt;i&lt;/sub&gt;&lt;div&gt;Phương thức M&lt;sub&gt;i+1&lt;/sub&gt;&lt;/div&gt;&lt;div&gt;Điểm rò rỉ dữ liệu (nếu có)&lt;/div&gt;" vertex="1">
+          <mxGeometry height="70" width="180" x="420" y="310" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
