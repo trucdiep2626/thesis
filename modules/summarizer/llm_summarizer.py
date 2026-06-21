@@ -15,6 +15,8 @@ from graphviz import Digraph
 
 # ---- Repo root & settings loader ----
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
 def load_settings(cfg_path=None):
     # allow env override; default to artifact_settings.json if not provided
     cfg_path = cfg_path or os.getenv("CONFIG", "configs/settings.json")
@@ -26,8 +28,10 @@ def load_settings(cfg_path=None):
         if k in s and not Path(s[k]).is_absolute():
             s[k] = str((REPO_ROOT / s[k]).resolve())
     return s
-SETTINGS    = load_settings()
-#GLOBAL_MODEL = SETTINGS.get("model_name", "gemma3:latest")
+
+
+SETTINGS = load_settings()
+# GLOBAL_MODEL = SETTINGS.get("model_name", "gemma3:latest")
 GLOBAL_MODEL = (
     os.getenv("OB_MODEL")
     or os.getenv("MODEL")
@@ -37,16 +41,16 @@ GLOBAL_MODEL = (
 print(f"[INFO] Using model: {GLOBAL_MODEL}")
 
 
-
-#GLOBAL_MODEL ="gemma3:latest"
-#GLOBAL_MODEL = "llama3.1:latest"
-#GLOBAL_MODEL ="qwen3:latest"
-#GLOBAL_MODEL = "deepseek-coder-v2:16b"
+# GLOBAL_MODEL ="gemma3:latest"
+# GLOBAL_MODEL = "llama3.1:latest"
+# GLOBAL_MODEL ="qwen3:latest"
+# GLOBAL_MODEL = "deepseek-coder-v2:16b"
 
 MAX_TOKENS = 40000
 
+
 # Updated Tee class to write to multiple outputs and avoid flushing closed files
-class Tee: 
+class Tee:
     def __init__(self, *files):
         self.files = files
 
@@ -55,7 +59,7 @@ class Tee:
             try:
                 f.write(data)
             except Exception as e:
-               
+
                 pass
 
     def flush(self):
@@ -66,6 +70,7 @@ class Tee:
                 except Exception:
                     pass
 
+
 # OLLAMA API CALL
 def ollama_chat(prompt, model=GLOBAL_MODEL, num_ctx=MAX_TOKENS, max_retries=3):
     url = "http://localhost:11434/api/chat"
@@ -74,7 +79,7 @@ def ollama_chat(prompt, model=GLOBAL_MODEL, num_ctx=MAX_TOKENS, max_retries=3):
         "messages": [{"role": "user", "content": prompt}],
         "response_format": "json_object",
         "stream": False,
-        "options": {"num_ctx": num_ctx, "temperature": 0.4}
+        "options": {"num_ctx": num_ctx, "temperature": 0.4},
     }
     retries = 0
     while retries < max_retries:
@@ -89,6 +94,7 @@ def ollama_chat(prompt, model=GLOBAL_MODEL, num_ctx=MAX_TOKENS, max_retries=3):
             time.sleep(2)
     raise Exception("Maximum retries exceeded for Ollama API call.")
 
+
 def extract_valid_json(response):
     """
     Attempt to extract valid JSON from the response by:
@@ -98,23 +104,23 @@ def extract_valid_json(response):
     """
     try:
         # Remove code fences
-        response = re.sub(r'```json\s*', '', response, flags=re.IGNORECASE)
-        response = re.sub(r'```', '', response)
+        response = re.sub(r"```json\s*", "", response, flags=re.IGNORECASE)
+        response = re.sub(r"```", "", response)
         patterns_to_remove = [
-            r'Here\s?is\s?the\s?output.*?\n?',
-            r'Here\s?is\s?the\s?integrated\s?summary.*?\n?',
-            r'Please\s?note.*?\n?',
-            r'Output\s?\n?:.*?\n?',
+            r"Here\s?is\s?the\s?output.*?\n?",
+            r"Here\s?is\s?the\s?integrated\s?summary.*?\n?",
+            r"Please\s?note.*?\n?",
+            r"Output\s?\n?:.*?\n?",
         ]
         for pat in patterns_to_remove:
-            response = re.sub(pat, '', response, flags=re.IGNORECASE)
+            response = re.sub(pat, "", response, flags=re.IGNORECASE)
 
         # Find the first '{' and the last '}'
-        start_idx = response.find('{')
-        end_idx = response.rfind('}')
+        start_idx = response.find("{")
+        end_idx = response.rfind("}")
         if start_idx == -1 or end_idx == -1 or end_idx <= start_idx:
             raise ValueError("No valid JSON block found in the response.")
-        json_str = response[start_idx:end_idx+1].strip()
+        json_str = response[start_idx : end_idx + 1].strip()
 
         return json.loads(json_str)
 
@@ -129,19 +135,22 @@ def normalize_method_signature(signature):
     Normalize a method signature by removing spaces, colons, quotes, brackets,
     and ensuring consistent casing.
     """
-    signature = (signature
-                 .replace(" ", "")
-                 .replace(":", "")
-                 .replace("\n", "")
-                 .replace('"', "")
-                 .replace("[", "")
-                 .replace("]", "")
-                 .lower()).rstrip(";")
+    signature = (
+        signature.replace(" ", "")
+        .replace(":", "")
+        .replace("\n", "")
+        .replace('"', "")
+        .replace("[", "")
+        .replace("]", "")
+        .lower()
+    ).rstrip(";")
     return signature
 
+
 def load_json_file(path):
-    with open(path, 'r', encoding='utf-8') as f:
+    with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
+
 
 def get_sensitive_calls(method, sensitive_apis):
     """
@@ -166,7 +175,7 @@ def parse_field_signature(instruction: str):
     => "Lcom/example/MyClass;->someField"
     """
     try:
-        parts = instruction.split(',', 1)
+        parts = instruction.split(",", 1)
         if len(parts) < 2:
             return None
         right_side = parts[1].strip()
@@ -177,7 +186,8 @@ def parse_field_signature(instruction: str):
         return None
     except:
         return None
-    
+
+
 def build_field_maps(methods_data):
     """
     Build two dicts:
@@ -200,6 +210,7 @@ def build_field_maps(methods_data):
                     field_readers.setdefault(f, set()).add(method_sig)
     return field_writers, field_readers
 
+
 def summarize_instructions_in_chunks(instructions_text, chunk_size=300):
     lines = instructions_text.splitlines()
     if len(lines) <= chunk_size:
@@ -207,7 +218,7 @@ def summarize_instructions_in_chunks(instructions_text, chunk_size=300):
 
     partial_jsons = []
     for i in range(0, len(lines), chunk_size):
-        chunk = "\n".join(lines[i:i + chunk_size])
+        chunk = "\n".join(lines[i : i + chunk_size])
 
         partial_prompt = (
             "You are an expert in analyzing Android bytecode instructions. Your task is to trace how sensitive user data is originated, "
@@ -255,7 +266,7 @@ def summarize_instructions_in_chunks(instructions_text, chunk_size=300):
             "1. Output only the JSON object. No explanation, markdown, or commentary.\n"
             "2. Method signatures: full, exact, no guessing, no truncation.\n"
             "3. `Next Methods = []` if a sink is hit.\n"
-            "4. Do not reuse examples from the prompt.\n"   
+            "4. Do not reuse examples from the prompt.\n"
         )
         try:
             partial_response_str = ollama_chat(partial_prompt).strip()
@@ -263,26 +274,29 @@ def summarize_instructions_in_chunks(instructions_text, chunk_size=300):
             if parsed_json:
                 partial_jsons.append(parsed_json)
             else:
-                partial_jsons.append({
-                    "Summary": "No valid JSON returned for this chunk.",
-                    "Next Methods": []
-                })
+                partial_jsons.append(
+                    {
+                        "Summary": "No valid JSON returned for this chunk.",
+                        "Next Methods": [],
+                    }
+                )
         except Exception as e:
             print(f"Error while summarizing chunk: {e}")
-            partial_jsons.append({
-                "Summary": f"Error: {e}",
-                "Next Methods": []
-            })
+            partial_jsons.append({"Summary": f"Error: {e}", "Next Methods": []})
 
     return json.dumps(partial_jsons, indent=4)
 
-def create_prompt(method, candidate_field_methods, previous_summary="No previous summary available."):
+
+def create_prompt(
+    method, candidate_field_methods, previous_summary="No previous summary available."
+):
     """
     Constructs the LLM prompt using the method's instructions and full signature.
     """
-    #instructions_text = "\n".join(method.get("instructions", []))
-    instructions_text = summarize_instructions_in_chunks("\n".join(method.get("instructions", [])), chunk_size=300)
-
+    # instructions_text = "\n".join(method.get("instructions", []))
+    instructions_text = summarize_instructions_in_chunks(
+        "\n".join(method.get("instructions", [])), chunk_size=300
+    )
 
     if candidate_field_methods:
         bridging_text = "\n".join(f"- {m}" for m in candidate_field_methods)
@@ -343,23 +357,23 @@ def create_prompt(method, candidate_field_methods, previous_summary="No previous
     )
     return prompt
 
+
 def sanitize_dot_id(text):
     """
     Replaces special characters that confuse Graphviz (like (, ), :, ;, /, etc.)
     with underscores so the node ID is safe.
     """
-    return re.sub(r'[^a-zA-Z0-9_]+', '_', text)
+    return re.sub(r"[^a-zA-Z0-9_]+", "_", text)
 
-def generate_graph_png(graph, output_filename="Model_visited_graph.png", dpi = 300):
+
+def generate_graph_png(graph, output_filename="Model_visited_graph.png", dpi=300):
     """
     Generates a PNG of the visited graph using Graphviz.
     Uses a sanitized version of the signature as the node ID,
     and uses the full signature as the label.
     """
     dot = Digraph(comment="Visited Subgraph", format="png")
-    dot.graph_attr.update({
-        'dpi': str(dpi)
-    })
+    dot.graph_attr.update({"dpi": str(dpi)})
     # Create all nodes
     for node in graph.nodes():
         full_signature = graph.nodes[node].get("label", node)
@@ -375,6 +389,7 @@ def generate_graph_png(graph, output_filename="Model_visited_graph.png", dpi = 3
     dot.render(filename=output_filename, cleanup=True)
     print(f"Graph exported to {output_filename}")
 
+
 def refine_single_subgraph_summary(subgraph_dict):
     """
     Summarize a single subgraph's {method_signature -> summary} in one LLM call,
@@ -383,23 +398,17 @@ def refine_single_subgraph_summary(subgraph_dict):
     # Convert subgraph summaries into a list for JSON
     methods_data = []
     for sig, summ in subgraph_dict.items():
-        methods_data.append({
-            "Method Signature": sig,
-            "Summary": summ
-        })
+        methods_data.append({"Method Signature": sig, "Summary": summ})
     methods_json_str = json.dumps(methods_data, indent=4)
-    
+
     prompt = (
         f"You are analyzing a set of final method-level summaries that describe how data flows across methods in one subgraph. "
         f"Each item may show sources (e.g., getDeviceId), overwriting operations, and potential sink calls.\n\n"
-        
         f"### Given Data:\n"
         f"```json\n{methods_json_str}\n```\n\n"
-        
         f"### Overwrite & Taint Loss Rule\n"
         f"- If a method summary shows that a sensitive value (like `DeviceId`) was overwritten with a safe constant (e.g., `abc`), that data is no longer tainted.\n"
         f"- Therefore, if a sink method uses that overwritten value, it's **not** a leak.\n\n"
-        
         f"### Sink Argument Rule\n"
         f"- Only include a sink in `All Sinks` if the **exact** argument passed at call time is still tainted from a sensitive source.\n"
         f"- If the argument was overwritten with a non-sensitive value (e.g., a constant string) or if the summary explicitly states that the taint was removed, do **not** list that sink.\n\n"
@@ -408,33 +417,32 @@ def refine_single_subgraph_summary(subgraph_dict):
         f"2. No markdown formatting, no '```' fences, and no Python code examples. \n"
         f"3. No explanations or text outside the JSON.\n"
         f"4.Output must be valid #JSON object, with no additional text, with no markdown, no code fences, and no additional explanations.\n"
-        
         f"### Final Output Format\n"
         f"Return exactly one JSON object,like this (with your actual data and fields):\n"
         f"```json\n"
         f"{{\n"
-        f"    \"Data Types Collected\": [\n"
-        f"        \"...\"\n"
+        f'    "Data Types Collected": [\n'
+        f'        "..."\n'
         f"    ],\n"
-        f"    \"Overall Data Flow\": [\n"
+        f'    "Overall Data Flow": [\n'
         f"        {{\n"
-        f"            \"Step\": \"[Short description]\",\n"
-        f"            \"Source Method\": \"[Full method signature]\",\n"
-        f"            \"Reasoning\": \"[Reasoning]\",\n"
-        f"            \"Action\": \"[Stored, logged, transmitted, etc.]\"\n"
+        f'            "Step": "[Short description]",\n'
+        f'            "Source Method": "[Full method signature]",\n'
+        f'            "Reasoning": "[Reasoning]",\n'
+        f'            "Action": "[Stored, logged, transmitted, etc.]"\n'
         f"        }}\n"
         f"    ],\n"
-        f"    \"All Sinks\": [\n"
-        f"        \"[Full method signature of sink method or null]\"\n"
+        f'    "All Sinks": [\n'
+        f'        "[Full method signature of sink method or null]"\n'
         f"    ],\n"
-        f"    \"Complete Data Flow\" : [\n"
+        f'    "Complete Data Flow" : [\n'
         f"      {{\n"
-        f"          \"dataflow 1\": \" [complete Source Method(...) --> ... --> Sink Method(...)]\",\n"
-        f"          \"Reasoning\": \"[Stepwise explanation of how data is propagated and transformed]\"\n"
+        f'          "dataflow 1": " [complete Source Method(...) --> ... --> Sink Method(...)]",\n'
+        f'          "Reasoning": "[Stepwise explanation of how data is propagated and transformed]"\n'
         f"      }}\n"
         f"    ],\n"
-        f"     \"Label\" :[\n"
-        f"          \" leak or no leak \"\n"
+        f'     "Label" :[\n'
+        f'          " leak or no leak "\n'
         f"      ]\n"
         f"}}\n"
         f"```\n\n"
@@ -447,24 +455,23 @@ def refine_single_subgraph_summary(subgraph_dict):
         f"3. If no data is collected at all, set `Data Types Collected` to `null`.\n"
         f"4. Do not guess or assume. Only rely on the method summaries above.\n\n"
     )
-    
-    response = ollama_chat(prompt)  
-  
+
+    response = ollama_chat(prompt)
+
     refined_json = extract_valid_json(response)
-    
 
     if refined_json:
         all_sinks = refined_json.get("All Sinks")
         if not all_sinks or all_sinks in ([], [None], None):
             refined_json["All Sinks"] = None
-            #refined_json["Complete Data Flow"] = None
+            # refined_json["Complete Data Flow"] = None
             refined_json["Label"] = "no leak"
     return refined_json
 
 
 def refine_all_subgraphs_separately(all_subgraphs):
     """
-    Instead of merging subgraph summaries, produce one refined JSON per subgraph 
+    Instead of merging subgraph summaries, produce one refined JSON per subgraph
     and collect them in a list.
     """
     refined_results = []
@@ -493,35 +500,35 @@ def refine_final_summary_for_chunk(chunk_dict, max_retries=3):
         f"```json\n{methods_json_str}\n```\n\n"
         f"### Your Task:\n"
         f"1.  Identify all unique **user personal data types** collected across all methods (e.g., location, device ID, phone number). Do not include generic data types.\n"
-        f"2. Combine **only** sensitive data flows from these user **personal sensitive data types** collected source methods into a single, coherent representation under \"Overall Data Flow\".\n"
-        f"3. Identify all sink points(logging, network calls, or file writes, etc.) using full method signatures in \"All Sinks\".\n\n"
-        f"4. Explain exactly **how** personal data ends up in each sink, listing **complete** stepwise flows. Each flow can span multiple methods (e.g., Method A --> Method B --> Method C). Use **\"Complete Data Flow\"** for this.\n"
-        f"5. Provide a `Label` field at the root level, set to \"sensitive\" if any personal data sink point is identified, otherwise \"not_sensitive\".\n\n"
+        f'2. Combine **only** sensitive data flows from these user **personal sensitive data types** collected source methods into a single, coherent representation under "Overall Data Flow".\n'
+        f'3. Identify all sink points(logging, network calls, or file writes, etc.) using full method signatures in "All Sinks".\n\n'
+        f'4. Explain exactly **how** personal data ends up in each sink, listing **complete** stepwise flows. Each flow can span multiple methods (e.g., Method A --> Method B --> Method C). Use **"Complete Data Flow"** for this.\n'
+        f'5. Provide a `Label` field at the root level, set to "sensitive" if any personal data sink point is identified, otherwise "not_sensitive".\n\n'
         f"### Output Format:\n"
         f"```json\n"
         f"{{\n"
-        f"    \"Data Types Collected\": [\n"
-        f"        \"...\"\n"
+        f'    "Data Types Collected": [\n'
+        f'        "..."\n'
         f"    ],\n"
-        f"    \"Overall Data Flow\": [\n"
+        f'    "Overall Data Flow": [\n'
         f"        {{\n"
-        f"            \"Step\": \"[Short description]\",\n"
-        f"            \"Source Method\": \"[Full method signature]\",\n"
-        f"            \"Reasoning\": \"[Reasoning]\",\n"
-        f"            \"Action\": \"[Stored, logged, transmitted, etc.]\",\n"
+        f'            "Step": "[Short description]",\n'
+        f'            "Source Method": "[Full method signature]",\n'
+        f'            "Reasoning": "[Reasoning]",\n'
+        f'            "Action": "[Stored, logged, transmitted, etc.]",\n'
         f"        }}\n"
         f"    ]\n"
-        f"    \"All Sinks\": [\n"
-        f"        \"[Full method signature of sink method]\"\n"
+        f'    "All Sinks": [\n'
+        f'        "[Full method signature of sink method]"\n'
         f"    ]\n"
-        f" \"Complete Data Flow\" : [\n"
+        f' "Complete Data Flow" : [\n'
         f"      {{\n"
-        f"          \"dataflow 1\": \" [Source Method(collected user data) --> intermediary Methods -->AnotherIntermediate(...) --> Sink Method(Data is logged,displayed,transmitted over the network)]\"\n"
-        f"            \"Reasoning\": \"[Stepwise explanation of how data is propagated and transformed]\"\n"
+        f'          "dataflow 1": " [Source Method(collected user data) --> intermediary Methods -->AnotherIntermediate(...) --> Sink Method(Data is logged,displayed,transmitted over the network)]"\n'
+        f'            "Reasoning": "[Stepwise explanation of how data is propagated and transformed]"\n'
         f"       }}\n"
         f"  ],\n"
-        f"     \"Label\" :[\n"
-        f"          \" leak or no leak \"\n"
+        f'     "Label" :[\n'
+        f'          " leak or no leak "\n'
         f"      ]\n"
         f"}}\n"
         f"```\n\n"
@@ -547,7 +554,7 @@ def refine_final_summary_for_chunk(chunk_dict, max_retries=3):
         "Overall Data Flow": [],
         "All Sinks": [],
         "Complete Data Flow": None,
-        "Label": "no leak"
+        "Label": "no leak",
     }
 
 
@@ -567,7 +574,7 @@ def merge_partial_final_summaries(partial_summaries):
     return {
         "Data Types Collected": list(aggregated_data_types),
         "Overall Data Flow": aggregated_data_flow,
-        "All Sinks": list(aggregated_sinks)
+        "All Sinks": list(aggregated_sinks),
     }
 
 
@@ -583,11 +590,14 @@ def refine_final_summary_in_chunks(all_summaries, chunk_size=3):
 
 
 def integrate_chunked_summary_from_main(global_summaries):
-    print("\n[Chunk-Based Summary Integration: Starting final summary chunk refinement...]")
+    print(
+        "\n[Chunk-Based Summary Integration: Starting final summary chunk refinement...]"
+    )
     merged_summary = refine_final_summary_in_chunks(global_summaries, chunk_size=3)
     print("\n[Chunk-Based Summary Result (Merged)]:")
     print(json.dumps(merged_summary, indent=4))
     return merged_summary
+
 
 # def main():
 #     start_time = time.time()
@@ -595,69 +605,118 @@ def integrate_chunked_summary_from_main(global_summaries):
 #     #sensitive_api_path = r"C:\Users\Eshita\AndroByte_Artifacts\resources\API.json"
 #     MASTER_FOLDER = SETTINGS.get("output_base", "outputs")
 #     sensitive_api_path = SETTINGS.get("api_list_path", "resources/API.json")
-    
+
 #     for subfolder in os.listdir(MASTER_FOLDER):
 #         subfolder_path = os.path.join(MASTER_FOLDER, subfolder)
 #         if not os.path.isdir(subfolder_path):
 #             continue
-                
+
 ##above commented code its fine but when run single apk if the the otherapks decompiled file exist in master folder that also runs thats why below coe
 
-def main(target_apk: str | None = None):
-    start_time = time.time()
-    MASTER_FOLDER = SETTINGS.get("output_base", "outputs")
-    sensitive_api_path = SETTINGS.get("api_list_path", "resources/API.json")
 
+def main(target_apk: str | None = None):
+    # nhận đầu vào là một tên tệp apk cụ thẻ, nếu không có thì sẽ chạy toàn bộ thư mục
+
+    start_time = time.time()
+    # ghi lại thời gian bắt đầu chạy hàm để tính tổng hiệu năng xử lý ở cuối chương trình
+
+    MASTER_FOLDER = SETTINGS.get("output_base", "outputs")
+    # Lấy đường dẫn thư mục chứa kết quả phân tích thô từ cấu hình hệ thống (mặc định là thư mục "outputs").
+
+    sensitive_api_path = SETTINGS.get("api_list_path", "resources/API.json")
+    # Lấy đường dẫn tới file JSON chứa danh sách các API nhạy cảm của hệ thống Android
+
+    # Khởi chạy vòng lặp duyệt qua tất cả các thư mục con
+    # (mỗi thư mục tương ứng với một ứng dụng APK đã được dịch ngược) nằm bên trong MASTER_FOLDER.
     for subfolder in os.listdir(MASTER_FOLDER):
+
+        # Nếu người dùng có chỉ định đích danh một ứng dụng cần quét (target_apk),
+        # chương trình sẽ bỏ qua tất cả các thư mục ứng dụng khác
         if target_apk and subfolder != target_apk:
             continue
+
+        # Tạo đường dẫn tuyệt đối dẫn vào bên trong thư mục của ứng dụng đang xét
         subfolder_path = os.path.join(MASTER_FOLDER, subfolder)
+
+        # Nếu đường dẫn không phải một thư mục hợp lệ thì bỏ qua
         if not os.path.isdir(subfolder_path):
             continue
-        json_files = [f for f in os.listdir(subfolder_path) if f.endswith('_bytecode_instructions.json')]
+
+        # Tìm kiếm và lập danh sách tất cả các file JSON chứa mã máy Bytecode sạch
+        # đã được trích xuất ở giai đoạn tiền xử lý của ứng dụng đó.
+        json_files = [
+            f
+            for f in os.listdir(subfolder_path)
+            if f.endswith("_bytecode_instructions.json")
+        ]
+
+        # Nếu không tìm thấy file dữ liệu mã máy Bytecode nào,
+        # hệ thống in thông báo và bỏ qua thư mục này.
         if not json_files:
             print(f"No bytecode instructions JSON file found in {subfolder_path}")
             continue
 
+        # Lấy ra file JSON chứa mã máy đầu tiên tìm thấy để chuẩn bị nạp vào bộ nhớ.
         methods_json_path = os.path.join(subfolder_path, json_files[0])
+
+        # Tạo một thư mục con tên là output nằm ngay trong thư mục của ứng dụng
+        # để làm nơi lưu trữ các báo cáo phân tích nâng cao.
         output_dir = os.path.join(subfolder_path, "output")
         os.makedirs(output_dir, exist_ok=True)
 
+        # Định nghĩa sẵn 5 đường dẫn tệp tin để xuất kết quả phân tích bao gồm:
+        # hình ảnh đồ thị luồng đi (visited_graph), tóm tắt thô của các hàm, tóm tắt tinh chỉnh tối ưu bởi LLM,
+        # bản đồ ánh xạ cuộc gọi nhạy cảm và file văn bản lưu toàn bộ log hệ thống (console_output.txt).
         output_graph_path = os.path.join(output_dir, "visited_graph")
         output_summaries_path = os.path.join(output_dir, "method_summaries.json")
-        output_refined_summaries_path = os.path.join(output_dir, "refined_method_summaries.json")
+        output_refined_summaries_path = os.path.join(
+            output_dir, "refined_method_summaries.json"
+        )
         output_sensitive_mapping = os.path.join(output_dir, "sensitive_calls.json")
         console_output_file = os.path.join(output_dir, "console_output.txt")
 
+        # Lưu lại luồng xuất màn hình mặc định của hệ thống (sys.stdout) để khôi phục lại sau khi xử lý xong ứng dụng.
         old_stdout = sys.stdout
-        with open(console_output_file, 'w', encoding='utf-8') as console_file:
+
+        # Mở file lưu log và sử dụng class Tee tự định nghĩa để ghi đè lên sys.stdout. Từ dòng này, bất kỳ lệnh print() nào trong mã nguồn
+        # sẽ vừa in ra màn hình Console cho lập trình viên xem, vừa tự động ghi ngầm vào file console_output.txt.
+        with open(console_output_file, "w", encoding="utf-8") as console_file:
             sys.stdout = Tee(sys.__stdout__, console_file)
-            
+
+            # In thông báo tiến độ xử lý thư mục và file mã máy tương ứng.
             print(f"Processing folder: {subfolder_path}")
             print(f"Using methods file: {methods_json_path}")
-            
-            # Load JSON data
+
+            # Nạp toàn bộ dữ liệu cấu trúc mã máy của ứng dụng (methods_data)
+            # cùng danh sách các API nhạy cảm của hệ thống Android (sensitive_apis) vào bộ nhớ.
             methods_data = load_json_file(methods_json_path)
             sensitive_api_data = load_json_file(sensitive_api_path)
             sensitive_apis = sensitive_api_data.get("sensitive_apis", [])
 
+            # Gọi hàm bổ trợ để phân tích các lệnh nạp/ghi thuộc tính nhằm xây dựng 2 bản đồ:
+            # field_writers (nhóm các hàm có hành vi ghi dữ liệu vào một biến toàn cục) và field_readers
+            # (nhóm các hàm đọc dữ liệu từ biến toàn cục đó).
+            # Đây là cơ sở cốt lõi để thực hiện kỹ thuật bắc cầu luồng dữ liệu (Field-based bridging).
             field_writers, field_readers = build_field_maps(methods_data)
-            
+
+            # Duyệt qua toàn bộ ứng dụng để xây dựng một từ điển tra cứu nhanh (method_lookup).
+            # Khóa của từ điển là chuỗi chữ ký hàm đã được loại bỏ các khoảng trắng hoặc ký tự thừa (normalize_method_signature),
+            # giúp hệ thống tìm kiếm thông tin của một hàm với độ phức tạp thuật toán cực nhanh O(1).
             #  lookup dict using the complete signature as the key
             method_lookup = {}
             for _, method_info in methods_data.items():
                 full_sig = method_info.get("method_signature", "")
                 norm_sig = normalize_method_signature(full_sig)
                 method_lookup[norm_sig] = (full_sig, method_info)
-            
+
             # Global traversal data
-            global_visited = set()           
-            global_summaries = {}            
-            global_next_methods = {}         
+            global_visited = set()
+            global_summaries = {}
+            global_next_methods = {}
             global_graph = nx.DiGraph()
             sensitive_call_mapping = []
-            subgraph_summaries = []          
-            
+            subgraph_summaries = []
+
             # Identify root methods
             sensitive_roots = []
             for _, method_info in methods_data.items():
@@ -667,38 +726,49 @@ def main(target_apk: str | None = None):
                     print(f"Sensitive method found: {full_sig}")
                     sensitive_call_mapping.extend(calls)
                     sensitive_roots.append(full_sig)
-            
+
             if not sensitive_roots:
                 print("No sensitive methods detected based on the provided API list.")
-            
-            # DFS traversal 
+
+            # DFS traversal
             for root_sig in sensitive_roots:
                 if root_sig in global_visited:
                     continue
                 local_stack = deque()
-                local_stack.append({"current": root_sig, "parent": None, "root": root_sig})
+                local_stack.append(
+                    {"current": root_sig, "parent": None, "root": root_sig}
+                )
                 global_visited.add(root_sig)
-                
+
                 local_subgraph_summary = {}
-                
+
                 norm_root_sig = normalize_method_signature(root_sig)
                 if norm_root_sig in method_lookup:
                     _, root_method_info = method_lookup[norm_root_sig]
-                    global_graph.add_node(root_sig, label=root_method_info.get("method_signature", root_sig))
-                
+                    global_graph.add_node(
+                        root_sig,
+                        label=root_method_info.get("method_signature", root_sig),
+                    )
+
                 while local_stack:
                     item = local_stack.pop()
                     current_sig = item["current"]
                     parent_sig = item["parent"]
                     root_sig_ = item["root"]
-                    
+
                     norm_current_sig = normalize_method_signature(current_sig)
                     if norm_current_sig not in method_lookup:
                         continue
                     _, current_method_info = method_lookup[norm_current_sig]
-                    
+
                     if current_sig not in global_summaries:
-                        prev_summary = global_summaries.get(parent_sig, "No previous summary available.") if parent_sig else "No previous summary available."
+                        prev_summary = (
+                            global_summaries.get(
+                                parent_sig, "No previous summary available."
+                            )
+                            if parent_sig
+                            else "No previous summary available."
+                        )
                         # Fields bridging
                         fields_written = []
                         for f, w_set in field_writers.items():
@@ -711,8 +781,12 @@ def main(target_apk: str | None = None):
                             for r_m in readers:
                                 if r_m != current_sig:
                                     bridging_methods.add(r_m)
-                        
-                        prompt = create_prompt(current_method_info, bridging_methods, previous_summary=prev_summary)
+
+                        prompt = create_prompt(
+                            current_method_info,
+                            bridging_methods,
+                            previous_summary=prev_summary,
+                        )
                         try:
                             response = ollama_chat(prompt)
                             parsed = extract_valid_json(response)
@@ -724,73 +798,88 @@ def main(target_apk: str | None = None):
                         global_summaries[current_sig] = summary_text
                         global_next_methods[current_sig] = next_methods
                         local_subgraph_summary[current_sig] = summary_text
-                        print(f"Processed summary for {current_sig}: {json.dumps(parsed, indent=4)}")
+                        print(
+                            f"Processed summary for {current_sig}: {json.dumps(parsed, indent=4)}"
+                        )
                     else:
                         next_methods = global_next_methods.get(current_sig, [])
-                    
+
                     if parent_sig:
                         global_graph.add_edge(parent_sig, current_sig)
-                    
+
                     for nm in next_methods:
                         norm_nm = normalize_method_signature(nm)
                         if norm_nm in method_lookup:
                             next_full_sig, next_method_data = method_lookup[norm_nm]
                             if next_full_sig not in global_visited:
                                 global_visited.add(next_full_sig)
-                                local_stack.append({"current": next_full_sig, "parent": current_sig, "root": root_sig_})
-                                global_graph.add_node(next_full_sig, label=next_method_data.get("method_signature", next_full_sig))
+                                local_stack.append(
+                                    {
+                                        "current": next_full_sig,
+                                        "parent": current_sig,
+                                        "root": root_sig_,
+                                    }
+                                )
+                                global_graph.add_node(
+                                    next_full_sig,
+                                    label=next_method_data.get(
+                                        "method_signature", next_full_sig
+                                    ),
+                                )
                                 global_graph.add_edge(current_sig, next_full_sig)
-            
+
                 subgraph_summaries.append(local_subgraph_summary)
-            
-            with open(output_summaries_path, 'w', encoding='utf-8') as f:
+
+            with open(output_summaries_path, "w", encoding="utf-8") as f:
                 json.dump(subgraph_summaries, f, indent=4)
             print(f"Method summaries saved to {output_summaries_path}")
-            
-            with open(output_sensitive_mapping, 'w', encoding='utf-8') as f:
+
+            with open(output_sensitive_mapping, "w", encoding="utf-8") as f:
                 json.dump(sensitive_call_mapping, f, indent=4)
             print(f"Sensitive call mapping saved to {output_sensitive_mapping}")
-            
-            generate_graph_png(global_graph, output_filename=output_graph_path)
-            
-            refined_subgraph_summaries = refine_all_subgraphs_separately(subgraph_summaries)
-            
+
+            # generate_graph_png(global_graph, output_filename=output_graph_path)
+
+            refined_subgraph_summaries = refine_all_subgraphs_separately(
+                subgraph_summaries
+            )
+
             print("Refined Subgraph Summaries:")
             print(json.dumps(refined_subgraph_summaries, indent=4))
-            
-            with open(output_refined_summaries_path, 'w', encoding='utf-8') as f:
+
+            with open(output_refined_summaries_path, "w", encoding="utf-8") as f:
                 json.dump(refined_subgraph_summaries, f, indent=4)
             print(f"Refined method summaries saved to {output_refined_summaries_path}")
-  
+
             sensitive_only = []
             for subgraph_result in refined_subgraph_summaries:
                 label_value = subgraph_result.get("Label", "")
                 if isinstance(label_value, str):
-                   # if label_value.strip().lower() == "sensitive":
-                   if label_value.strip().lower() == "leak":
+                    # if label_value.strip().lower() == "sensitive":
+                    if label_value.strip().lower() == "leak":
                         sensitive_only.append(subgraph_result)
                 elif isinstance(label_value, list):
                     for label in label_value:
-                        #if label.strip().lower() == "sensitive":
+                        # if label.strip().lower() == "sensitive":
                         if label.strip().lower() == "leak":
                             sensitive_only.append(subgraph_result)
                             break
 
-          
             sensitive_file_path = os.path.join(output_dir, "sensitive_only.json")
             with open(sensitive_file_path, "w", encoding="utf-8") as sf:
                 json.dump(sensitive_only, sf, indent=4)
-            print(f"Saved {len(sensitive_only)} 'sensitive' subgraphs to: {sensitive_file_path}")
-         
-            
+            print(
+                f"Saved {len(sensitive_only)} 'sensitive' subgraphs to: {sensitive_file_path}"
+            )
+
             total_time = time.time() - start_time
             print(f"Total summary time: {total_time} seconds")
-            
-            
+
         sys.stdout = old_stdout
         print(f"Finished processing folder: {subfolder_path}\n")
-    
+
     print("All folders have been processed.")
+
 
 if __name__ == "__main__":
     main()
